@@ -1,0 +1,71 @@
+version: '3.7'            # phiên bản docker compose
+services:
+  mysql8-container:       # 1 container được chia làm nhiều layer để tải về
+    container_name: mysql8-container
+    image: mysql:8.2.0
+    restart: always       # tự khởi động lại nếu lỗi
+    environment:
+      MYSQL_ROOT_PASSWORD: 12345678
+      MYSQL_DATABASE: webcang
+    ports:
+      - 3307:3306         # trong: ->0.0.0.0:3306/tcp, ngoai: 3307 # 0.0.0.0: cho phep bat ki dau
+    networks:
+      - seaport-network
+
+  phpmyadmin8-container:
+  # intel host
+    container_name: phpmyadmin8-container
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    depends_on:
+      - mysql8-container
+    ports:
+      - "8100:80"                   #ngoài: http://server-ip:8100, trong: ->80/tcp
+    environment:                    #sử dụng môi trường của container phía trên
+      PMA_HOST: mysql8-container    #PMA: PHP my admin
+    networks:
+      - seaport-network
+
+  seaport-spring-container:
+    container_name: seaport-spring-container
+    build:
+      context: .
+      dockerfile: DockerfileJavaSpring
+    ports:
+      - 8099:8088                   # ngoài 8099-> trong 8088
+    environment:
+      SRPING_DATASOURCE_URL: jdbc:mysql://mysql8-container:3306/webcang?serverTimezone=UTC&allowPublicKeyRetrieval=true
+      MYSQL_ROOT_PASSWORD: 12345678
+    depends_on:
+      - mysql8-container
+    networks:
+      - seaport-network
+networks:
+  seaport-network:
+    name: seaport-network
+    driver: bridge
+  
+# docker ps
+# docker network ls
+# docker network rm 418d000b3646 4ea1fc1a0021 ff501d5a5c81
+#---tạo container
+# docker-compose -f ./deployment.yaml up -d mysql8-container
+# docker-compose -f ./deployment.yaml up -d phpmyadmin8-container   #chrome: localhost:8100->root, 12345678->import file sql bằng giao diện
+# docker-compose -f ./deployment.yaml up -d seaport-spring-container
+#---mỗi lần chạy container phải logs xem nó chạy được chưa
+# docker logs mysql8-container
+# docker exec -it mysql8-container /bin/sh
+# interacted mode: tuong tac lenh khi dang chay
+# /bin/sh: đường dẫn để bật shell
+#>   mysql -u root -p
+#>   12345678
+#mysql>show databases;
+#mysql>use webcang;
+#mysql>show tables;
+#mysql>exit
+#>   exit
+#---xóa container
+# docker-compose -f ./deployment.yaml rm -s -f mysql8-container
+#---xem tất cả image
+# docker image ls
+#---thứ tự bật docker zookeeper->broker

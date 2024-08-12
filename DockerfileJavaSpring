@@ -1,0 +1,31 @@
+# giai đoạn 1
+# base image và đặt tên cho stage này là build
+FROM maven:3.8.4-openjdk-17-slim AS build
+# FROM maven:3.9.6 AS build
+# Đặt thư mục làm việc trong container là /app
+WORKDIR /app
+COPY backend /app/backend
+#  tạo ra file JAR trong thư mục /app/backend/target, tên file jar: cấu hình trong file pom.xml
+RUN mvn package -f /app/backend/pom.xml
+
+# giai đoạn 2: chạy
+FROM openjdk:17-slim
+WORKDIR /app
+# phải build trước thì mới có file jar mà copy, tên file jar định nghĩa trong pom.xml
+COPY --from=build /app/backend/target/seaport-0.0.1-SNAPSHOT.jar app.jar
+# COPY --from=build /app/backend/uploads uploads
+
+EXPOSE 8088
+# chạy file app.jar
+CMD ["java","-jar","app.jar"]
+
+# brew install maven
+# -t (tag) [tên sau khi tạo ra] -f (file) [đường dẫn file build]
+# build context: tập hợp tệp và thư mục để build image
+# docker build -t seaport-spring:0.0.1 -f ./DockerfileJavaSpring . (build context là thư mục hiện tại)
+# ---kiểm tra image thành công chưa
+# docker image ls
+# ---đổi tên để push lên hub
+# docker tag seaport-spring:1.0.4 shinichiok2614/seaport-portal:0.0.1
+# docker push shinichiok2614/seaport-portal:0.0.1
+# 57:19
